@@ -30,7 +30,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd exercises/test
+          cd exercises
           npm install
 
       - name: Testing on OS (${{ matrix.os }}) with Node.js (version ${{ matrix.node-version }}) attempt ${{ matrix.attempt }}
