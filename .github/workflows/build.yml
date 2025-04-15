@@ -1,68 +1,39 @@
-name: build
+name: Test on Multiple OS
 
 on:
   push:
     branches:
       - master
-
-env:
-  BOOK_FILENAME: mostly-adequate-guide-to-functional-programming
+  pull_request:
+    branches:
+      - master
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest] # Operating systems to test
+        node-version: [18, 20, 22]                      # Node.js versions to test
+        attempt: [1, 2, 3, 4, 5]                        # Repeat tests 5 times
+
     steps:
-      - name: Checkout source code
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Install Calibre
-        run: |
-          sudo apt install -y libopengl0 libegl1 libxcb-cursor0
-          wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sh /dev/stdin
-          mkdir -p ~/.local/bin
-          ln -s /opt/calibre/calibre ~/.local/bin/calibre
-          ln -s /opt/calibre/ebook-convert ~/.local/bin/ebook-convert
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
         with:
-          node-version: 10.22.1
+          node-version: ${{ matrix.node-version }}
 
-      - name: Generate summary
+      - name: Install dependencies
+        run: npm install
+
+      - name: Testing on OS (${{ matrix.os }}) with Node.js (version ${{ matrix.node-version }}) attempt ${{ matrix.attempt }}
         run: |
-          npm run generate-summary
+          echo "Run attempt: ${{ matrix.attempt }}"
+          npm test
 
-      - name: Setup gitbook
-        run: |
-          npm install
-          npm run setup
-
-      - name: Generate PDF
-        run: |
-          npm run generate-pdf
-          mv book.pdf ${BOOK_FILENAME}.pdf
-
-      - name: Generate EPUB
-        run: |
-          npm run generate-epub
-          mv book.epub ${BOOK_FILENAME}.epub
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: PDF
-          path: ${{ env.BOOK_FILENAME }}.pdf
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: EPUB
-          path: ${{ env.BOOK_FILENAME }}.epub
-
-      - run: echo "ID=$(git describe --tags --always)" >> $GITHUB_OUTPUT
-        id: release-id
-
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.release-id.outputs.ID }}
-          files: |
-            ${{ env.BOOK_FILENAME }}.pdf
-            ${{ env.BOOK_FILENAME }}.epub
+    continue-on-error: false
